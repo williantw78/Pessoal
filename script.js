@@ -2,9 +2,12 @@
 const SUPABASE_URL = "https://yiozdpsbraalesdthzft.supabase.co/rest/v1/";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpb3pkcHNicmFhbGVzZHRoemZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjUxNjIsImV4cCI6MjA5NjI0MTE2Mn0.t16Pt543HwfeaMggDxKXZt-EvNcYUN3HcsflHLG_vKA
 ";
+//-----
+//-----
 
-// Inicializa a conexão automática com a nuvem
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// CONFIGURAÇÃO: Insere os dados exatos do teu painel do Supabase
+//const SUPABASE_URL = "SUA_URL_DO_SUPABASE_AQUI"; 
+//const SUPABASE_KEY = "SUA_CHAVE_ANON_PUBLIC_AQUI"; 
 
 let appDados = {
     responsaveis: [],
@@ -13,40 +16,43 @@ let appDados = {
     receber: [] 
 };
 
-// Nova Função: Salva tudo de forma automática na nuvem com 1 clique
+// Salva as informações na nuvem limpando os registos antigos (Fetch nativo)
 async function salvarNaNuvem() {
     try {
-        // Apaga o registo antigo para manter sempre apenas o mais atualizado
-        await supabase.from('financeiro').delete().neq('id', 0);
-        
-        // Insere os dados atuais na base de dados
-        const { error } = await supabase.from('financeiro').insert([{ dados_json: appDados }]);
-        
-        if (error) throw error;
+        await fetch(`${SUPABASE_URL}/rest/v1/financeiro?id=neq.0`, {
+            method: 'DELETE',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        });
+        let resposta = await fetch(`${SUPABASE_URL}/rest/v1/financeiro`, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dados_json: appDados })
+        });
+        if (!resposta.ok) throw new Error("Erro ao salvar");
         alert("Dados guardados com sucesso na nuvem!");
     } catch (err) {
         console.error(err);
-        alert("Erro ao salvar os dados na nuvem.");
+        alert("Erro ao guardar dados na nuvem. Verifica a tua tabela ou chaves.");
     }
 }
 
-// Nova Função: Carrega todos os dados guardados na nuvem de forma instantânea
+// Carrega os dados mais recentes diretamente da nuvem
 async function carregarDaNuvem() {
     try {
-        const { data, error } = await supabase.from('financeiro').select('dados_json').order('created_at', { ascending: false }).limit(1);
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-            appDados = data[0].dados_json;
+        let resposta = await fetch(`${SUPABASE_URL}/rest/v1/financeiro?select=dados_json&order=created_at.desc&limit=1`, {
+            method: 'GET',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        });
+        if (!resposta.ok) throw new Error("Erro ao carregar");
+        let dados = await resposta.json();
+        if (dados && dados.length > 0) {
+            appDados = dados[0].dados_json;
             renderizarTudo();
-            alert("Dados carregados com sucesso da nuvem!");
         } else {
-            alert("Nenhum dado encontrado na nuvem.");
+            console.log("Nenhum dado prévio encontrado na nuvem.");
         }
     } catch (err) {
         console.error(err);
-        alert("Erro ao puxar os dados da nuvem.");
     }
 }
 
@@ -97,6 +103,7 @@ function removerResponsavel(nome) {
 
 function renderizarResponsaveis() {
     const container = document.getElementById('listaResponsaveis');
+    if (!container) return;
     container.innerHTML = '';
     appDados.responsaveis.forEach(r => {
         container.innerHTML += `<div class="tag">${r}<span onclick="removerResponsavel('${r}')">&times;</span></div>`;
@@ -122,6 +129,7 @@ function promptRemoverMes() {
 
 function atualizarSelectMeses() {
     const select = document.getElementById('selectMesFiltro');
+    if (!select) return;
     const valorSelecionado = select.value;
     select.innerHTML = '';
     appDados.meses.forEach(m => {
@@ -241,14 +249,20 @@ function atualizarResumo() {
         });
     }
 
-    document.getElementById('resumoPagar').innerText = totalPagar.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) + " €";
-    document.getElementById('resumoReceber').innerText = totalReceber.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) + " €";
-    let saldo = totalReceber - totalPagar;
+    const rPagar = document.getElementById('resumoPagar');
+    const rReceber = document.getElementById('resumoReceber');
+    const rSaldo = document.getElementById('resumoSaldo');
     const cardSaldo = document.getElementById('cardSaldo');
-    document.getElementById('resumoSaldo').innerText = saldo.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) + " €";
-    cardSaldo.className = saldo >= 0 ? "dash-card positive" : "dash-card negative";
+
+    if(rPagar) rPagar.innerText = totalPagar.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) + " €";
+    if(rReceber) rReceber.innerText = totalReceber.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) + " €";
+    
+    let saldo = totalReceber - totalPagar;
+    if(rSaldo) rSaldo.innerText = saldo.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) + " €";
+    if(cardSaldo) cardSaldo.className = saldo >= 0 ? "dash-card positive" : "dash-card negative";
 
     const containerDetalhe = document.getElementById('detalhePorPessoa');
+    if (!containerDetalhe) return;
     containerDetalhe.innerHTML = '';
     Object.keys(detalhePessoas).forEach(pessoa => {
         let pPagar = detalhePessoas[pessoa].pagar, pReceber = detalhePessoas[pessoa].receber, pSaldo = pReceber - pPagar;
@@ -264,5 +278,6 @@ function salvarDados() {
     link.href = URL.createObjectURL(blob); link.download = "dados_financeiros.txt"; link.click();
 }
 
-// Executa automaticamente o carregamento da nuvem ao abrir o site
+// Inicializa a interface e tenta puxar os dados da nuvem automaticamente
+renderizarTudo();
 carregarDaNuvem();
