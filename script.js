@@ -1,5 +1,5 @@
 // ATENÇÃO: Cole aqui os dados do seu painel do Supabase obtidos no Passo 3
-const SUPABASE_URL = "https://yiozdpsbraalesdthzft.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://yiozdpsbraalesdthzft.supabase.co/rest/v1/financeiro";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlpb3pkcHNicmFhbGVzZHRoemZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NjUxNjIsImV4cCI6MjA5NjI0MTE2Mn0.t16Pt543HwfeaMggDxKXZt-EvNcYUN3HcsflHLG_vKA
 ";
 //-----
